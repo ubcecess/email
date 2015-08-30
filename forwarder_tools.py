@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 from urllib import urlencode
 import webbrowser
 
