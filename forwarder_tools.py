@@ -3,8 +3,8 @@ import webbrowser
 
 import click
 
-from ecessemail.forwarders import forwarders
-from ecessemail.existing_forwarders import  existing_forwarders
+from ecessprivate.forwarders import forwarders
+from ecessemail.existing_forwarders import  get_existing_forwarders
 
 
 @click.group()
