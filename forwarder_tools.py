@@ -9,9 +9,15 @@ from ecessprivate.forwarders import forwarders
 from ecessemail.existing_forwarders import  get_existing_forwarders
 
 
+FORWARDERS_HTML = "forwarders_html"
+
+
 @click.group()
-def cli():
-    pass
+@click.option("-f", "--forwarders-html")
+@click.pass_context
+def cli(ctx, forwarders_html):
+    if forwarders_html is not None:
+        ctx.obj[FORWARDERS_HTML] = forwarders_html
 
 
 @cli.command()
@@ -36,8 +42,11 @@ def recipients(dest):
 @click.option('-d', "--dataset", required=True,
               type=click.Choice(["desired", "current"]))
 @click.option('-r', '--root', required=False, type=click.STRING)
-def draw_graph(dataset, root):
+@click.pass_context
+def draw_graph(ctx, dataset, root):
     """Draw a directed graph of forwarding"""
+    existing_forwarders = get_existing_forwarders(ctx.obj[FORWARDERS_HTML])
+
     import networkx as nx
     import matplotlib.pyplot as plt
 
@@ -94,17 +103,23 @@ def write_csv(filename):
 
 
 @cli.command()
-def existing_fwd():
+@click.pass_context
+def existing_fwd(ctx):
     """Print existing forwarders as per forwarders.html"""
+    existing_forwarders = get_existing_forwarders(ctx.obj[FORWARDERS_HTML])
+
     for fwd in existing_forwarders:
         print(fwd)
 
 
 @cli.command()
-def diff_forwarders():
+@click.pass_context
+def diff_forwarders(ctx):
     """Print list of extra forwarders in current that should be removed
     as per desired
     """
+    existing_forwarders = get_existing_forwarders(ctx.obj[FORWARDERS_HTML])
+
     forwarder_entries = {
         (f, t) for f, ts in forwarders.items() for t in ts
     }
@@ -133,4 +148,4 @@ def _delete_forwarder(f, t, cpsess, confirm=True):
 
 
 if __name__ == '__main__':
-    cli()
+    cli(obj={})
