@@ -1,2 +1,8 @@
 click
 beautifulsoup4
+
+networkx
+matplotlib
+pydot
+pyparsing==1.5.7
+graphviz

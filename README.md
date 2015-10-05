@@ -7,6 +7,9 @@ Tools for handling ECESS email setup and maintenance
 ```bash
 # Both python2 and python3 should work; if they don't, file a bug
 pip install -r requirements.txt
+# graphviz also needs to be installed for graphing
+# On OS X
+brew install graphviz
 ```
 
 ## Usage

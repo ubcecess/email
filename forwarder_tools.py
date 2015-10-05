@@ -42,13 +42,14 @@ def recipients(dest):
 @click.option('-d', "--dataset", required=True,
               type=click.Choice(["desired", "current"]))
 @click.option('-r', '--root', required=False, type=click.STRING)
+@click.option('-g', '--gp', help='Graphing package to use',
+              default="gv", type=click.Choice(["gv", "nx"]))
 @click.pass_context
-def draw_graph(ctx, dataset, root):
+def draw_graph(ctx, dataset, root, gp):
     """Draw a directed graph of forwarding"""
-    existing_forwarders = get_existing_forwarders(ctx.obj[FORWARDERS_HTML])
-
     import networkx as nx
     import matplotlib.pyplot as plt
+    from graphviz import Digraph
 
     def edges_to_adj_map(edges):
         from collections import defaultdict
@@ -57,36 +58,49 @@ def draw_graph(ctx, dataset, root):
             map[vertex].append(neighbour)
         return dict(map)
 
-    def visit_children(G, adj_map, root):
+    def visit_children(G, adj_map, root, add_edge):
         stack = [root]
         while stack:
             node = stack.pop()
             neighbours = adj_map.get(node, [])
             stack.extend(neighbours)
             for neighbour in neighbours:
-                G.add_edge(node, neighbour)
+                add_edge(G, node, neighbour)
 
-    G = nx.DiGraph()
+    if gp == "nx":
+        G = nx.DiGraph()
+        add_edge = lambda G, a, b: G.add_edge(a, b)
+    elif gp == "gv":
+        G = Digraph()
+        add_edge = lambda G, a, b: G.edge(a, b)
+    else:
+        raise Exception
+
     if dataset == "desired":
         for vertex, neighbours in forwarders.items():
             for neighbour in neighbours:
                 if root is None or vertex == root:
-                    G.add_edge(vertex, neighbour)
+                    add_edge(G, vertex, neighbour)
     elif dataset == "current":
+        existing_forwarders = get_existing_forwarders(ctx.obj[FORWARDERS_HTML])
         if root is None:
             for vertex, neighbour in existing_forwarders:
-                G.add_edge(vertex, neighbour)
+                add_edge(G, vertex, neighbour)
         else:
             adj_map = edges_to_adj_map(existing_forwarders)
-            visit_children(G, adj_map, root)
+            visit_children(G, adj_map, root, add_edge)
 
-    pos = nx.spring_layout(G, k=0.2)  # positions for all nodes
-    nx.draw_networkx_nodes(G, pos, node_size=200)
-    nx.draw_networkx_edges(G, pos, width=0.5, alpha=1)
-    nx.draw_networkx_labels(G, pos, font_size=10, font_family='sans-serif')
+    if gp == "nx":
+        # pos = nx.spring_layout(G, k=0.2)  # positions for all nodes
+        pos = nx.graphviz_layout(G)
+        nx.draw_networkx_nodes(G, pos, node_size=200)
+        nx.draw_networkx_edges(G, pos, width=0.5, alpha=1)
+        nx.draw_networkx_labels(G, pos, font_size=10, font_family='sans-serif')
 
-    plt.axis('off')
-    plt.show()
+        plt.axis('off')
+        plt.show()
+    elif gp == "gv":
+        G.render("graph.gv", view=True)
 
 
 @cli.command()
