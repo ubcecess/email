@@ -105,10 +105,13 @@ def draw_graph(ctx, dataset, root, gp):
 
 @cli.command()
 @click.argument("filename", type=click.Path())
-def write_csv(filename):
+@click.option("--source", type=click.STRING,
+              help="Only write CSV with From address of --source")
+def write_csv(filename, source):
     """Write CSV of desired entries"""
     forwarder_entries = [
         (f, t) for f, ts in forwarders.items() for t in ts
+        if ((f == source) if source is not None else (True))
     ]
     import csv
     with open(filename, 'w') as f:
