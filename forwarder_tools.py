@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+import csv
+from collections import defaultdict
 from urllib import urlencode
 import webbrowser
 
@@ -22,13 +24,23 @@ def cli(ctx, forwarders_html):
 
 @cli.command()
 @click.argument("dest", type=click.STRING)
-def recipients(dest):
+@click.option("--existing", is_flag=True)
+@click.pass_context
+def recipients(ctx, dest, existing):
     """Prints final recipients for a mail that gets sent to a forwarder"""
+    if existing:
+        existing_forwarders = get_existing_forwarders(ctx.obj[FORWARDERS_HTML])
+        _forwarders = defaultdict(list)
+        for f, t in existing_forwarders:
+            _forwarders[f].append(t)
+    else:
+        _forwarders = forwarders
+
     leaves = set()
     stack = [dest]
     while stack:
         node = stack.pop()
-        children = forwarders.get(node)
+        children = _forwarders.get(node)
         if children is None:
             leaves.add(node)
         else:
@@ -113,7 +125,6 @@ def write_csv(filename, source):
         (f, t) for f, ts in forwarders.items() for t in ts
         if ((f == source) if source is not None else (True))
     ]
-    import csv
     with open(filename, 'w') as f:
         writer = csv.writer(f)
         writer.writerows(forwarder_entries)
@@ -148,6 +159,27 @@ def diff_forwarders(ctx):
     print("{}\n{}".format(header, len(header)*"-"))
     for e in sorted(forwarder_entries - set(existing_forwarders)):
         print(e)
+
+
+@cli.command()
+@click.option("--cpsess", required=True)
+@click.option("--no-confirm", is_flag=True)
+@click.pass_context
+def del_extra_fwds(ctx, cpsess, no_confirm):
+    existing_forwarders = get_existing_forwarders(ctx.obj[FORWARDERS_HTML])
+
+    forwarder_entries = {
+        (f, t) for f, ts in forwarders.items() for t in ts
+    }
+    header = "Forwarders to Remove"
+    print("{}\n{}".format(header, len(header)*"-"))
+    for e in sorted(set(existing_forwarders) - forwarder_entries):
+        print(e)
+        if raw_input("Remove this forwarder? (y/N) ") == "y":
+            f, t = e
+            _delete_forwarder(f, t, cpsess, not no_confirm)
+        else:
+            print("No action taken.")
 
 
 def _delete_forwarder(f, t, cpsess, confirm=True):
